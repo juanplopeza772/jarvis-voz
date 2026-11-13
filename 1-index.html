@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="es-CO">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#05070a">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Jarvis</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; }
+  body {
+    background: #05070a; color: #f2f3f5;
+    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 18px 14px 28px; gap: 10px;
+  }
+  .top { width: 100%; max-width: 560px; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .badge { font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: #8fc4b6; border: 1px solid #2c3a36; border-radius: 999px; padding: 3px 10px; }
+  #estado { font-size: 14px; font-weight: 600; color: #9aa3ad; min-height: 20px; text-align: center; }
+  #estado.activo { color: #8fc4b6; }
+
+  #orbe-btn { appearance: none; border: 0; background: transparent; cursor: pointer; padding: 26px; margin-top: 14px; position: relative; border-radius: 50%; -webkit-tap-highlight-color: transparent; }
+  #orbe { display: block; width: 118px; height: 118px; border-radius: 50%;
+    background: radial-gradient(circle at 50% 38%, #b8ecdc 0%, #73a89a 42%, #22443c 78%, #0d1512 100%);
+    box-shadow: 0 0 46px rgb(115 168 154 / .45), 0 0 0 10px rgb(115 168 154 / .07), 0 0 0 22px rgb(115 168 154 / .04);
+    transition: transform .16s ease, filter .2s; }
+  #orbe-btn:active #orbe { transform: scale(.94); }
+  body.apagado #orbe, body.error #orbe { filter: saturate(.35) brightness(.7); box-shadow: 0 0 20px rgb(115 168 154 / .18); }
+  body.pensando #orbe { animation: latido .9s ease-in-out infinite; }
+  body.hablando #orbe { animation: latido .62s ease-in-out infinite; }
+  @keyframes latido { 0%,100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+  .onda { position: absolute; inset: 26px; border-radius: 50%; border: 2px solid rgb(115 168 154 / .55); animation: onda 1.8s ease-out infinite; pointer-events: none; display: none; }
+  .onda.rapida { animation-duration: .9s; }
+  body.escuchando .onda, body.vigilando .onda, body.hablando .onda { display: block; }
+  body.hablando .onda { animation-duration: .9s; }
+  @keyframes onda { 0% { transform: scale(1); opacity: .9; } 100% { transform: scale(1.75); opacity: 0; } }
+
+  #wave { display: flex; align-items: center; gap: 4px; height: 40px; }
+  #wave span { width: 3px; border-radius: 2px; background: #34554d; display: block; }
+  body.escuchando #wave span, body.hablando #wave span { background: #73a89a; animation: baila .78s ease-in-out infinite alternate; }
+  @keyframes baila { from { transform: scaleY(.35); } to { transform: scaleY(1); } }
+
+  #parcial { font-size: 13px; color: #6b7480; font-style: italic; min-height: 16px; padding: 0 8px; text-align: center; }
+  #aviso { display: none; font-size: 12.5px; line-height: 1.5; color: #e8c47a; background: rgb(232 196 122 / .08); border: 1px solid rgb(232 196 122 / .25); border-radius: 12px; padding: 8px 12px; max-width: 560px; text-align: left; }
+
+  #chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; max-width: 560px; }
+  .chip { min-height: 40px; border-radius: 999px; border: 1px solid #2c3a36; background: transparent; color: #8fc4b6; font-size: 13px; font-weight: 600; padding: 0 14px; cursor: pointer; }
+  .chip:active { background: rgb(115 168 154 / .12); }
+
+  #log { width: 100%; max-width: 560px; max-height: 38vh; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding: 6px 2px; }
+  .vacio { font-size: 12px; color: #4a525c; text-align: center; padding: 10px 0; }
+  .burbuja { font-size: 14px; line-height: 1.45; border-radius: 14px; padding: 8px 12px; max-width: 88%; white-space: pre-wrap; }
+  .burbuja.tu { align-self: flex-end; background: #1b2630; color: #cfe3dd; border-bottom-right-radius: 4px; }
+  .burbuja.jarvis { align-self: flex-start; background: #10141a; border: 1px solid #20252c; color: #f2f3f5; border-bottom-left-radius: 4px; }
+
+  #puente { display: none; width: 100%; max-width: 560px; }
+  #puente a { display: block; text-align: center; text-decoration: none; background: #73a89a; color: #0b0d10; font-weight: 700; font-size: 14px; border-radius: 999px; padding: 13px 18px; }
+
+  #entrada { width: 100%; max-width: 560px; display: flex; gap: 8px; }
+  #texto { flex: 1 1 auto; min-width: 0; min-height: 46px; border-radius: 999px; border: 1px solid #23272e; background: #10141a; color: #f2f3f5; padding: 0 16px; font-size: 14px; outline: none; }
+  #texto:focus { border-color: #73a89a; }
+  #enviar { flex: none; min-height: 46px; border: 0; border-radius: 999px; padding: 0 18px; background: #73a89a; color: #0b0d10; font-size: 14px; font-weight: 700; cursor: pointer; }
+
+  details { width: 100%; max-width: 560px; text-align: left; border-top: 1px solid #1c2127; padding-top: 8px; }
+  summary { cursor: pointer; font-size: 13px; font-weight: 600; color: #9aa3ad; min-height: 44px; display: flex; align-items: center; }
+  .fila { display: flex; align-items: center; gap: 10px; margin: 8px 0; font-size: 13px; color: #9aa3ad; }
+  .fila span { width: 110px; flex: none; }
+  select { flex: 1; min-height: 40px; border-radius: 10px; border: 1px solid #23272e; background: #10141a; color: #f2f3f5; font-size: 13px; padding: 0 10px; }
+  input[type=range] { flex: 1; accent-color: #73a89a; }
+  .nota { font-size: 11.5px; color: #6b7480; line-height: 1.5; margin: 4px 0; }
+  .interruptor { display: flex; align-items: center; gap: 10px; font-size: 13px; color: #9aa3ad; margin: 8px 0; }
+</style>
+</head>
+<body class="apagado">
+  <div class="top">
+    <span class="badge">Jarvis · siempre contigo</span>
+    <div id="estado">Tócame para despertarme</div>
+  </div>
+
+  <button id="orbe-btn" aria-label="Hablar con Jarvis">
+    <span id="orbe"></span>
+    <span class="onda"></span>
+  </button>
+
+  <div id="wave"></div>
+  <div id="parcial"></div>
+  <div id="aviso"></div>
+
+  <div id="chips"></div>
+
+  <div id="log"><div class="vacio">La conversación aparece aquí.</div></div>
+
+  <div id="puente"><a id="puente-a" href="#" target="_blank" rel="noopener">Preguntarle a mi Instinct por WhatsApp</a></div>
+
+  <div id="entrada">
+    <input id="texto" type="text" placeholder="O escríbeme aquí..." autocomplete="off">
+    <button id="enviar" type="button">Enviar</button>
+  </div>
+
+  <details>
+    <summary>Voz y opciones</summary>
+    <label class="fila"><span>Voz</span><select id="voz-sel"><option value="">Automática (español)</option></select></label>
+    <label class="fila"><span>Velocidad</span><input id="vel" type="range" min="0.8" max="1.4" step="0.1" value="1"></label>
+    <label class="interruptor"><input id="bargein" type="checkbox"> Interrupción por voz (experimental: con audífonos funciona mejor)</label>
+    <p class="nota">Para tenerme a la mano: menú de Chrome (tres puntos) → «Añadir a pantalla principal». Si vuelves de otra app y no te oigo, tócame una vez y sigo.</p>
+    <p class="nota">Tu voz la procesa el reconocimiento del navegador de tu teléfono. Esta página no guarda ni envía nada a nadie, y no pide usuario ni clave.</p>
+  </details>
+
+<script>
+(function () {
+  'use strict';
+
+  var body = document.body;
+  var estadoEl = document.getElementById('estado');
+  var parcialEl = document.getElementById('parcial');
+  var avisoEl = document.getElementById('aviso');
+  var logEl = document.getElementById('log');
+  var puenteEl = document.getElementById('puente');
+  var puenteA = document.getElementById('puente-a');
+  var textoEl = document.getElementById('texto');
+  var waveEl = document.getElementById('wave');
+
+  var TEXTOS = {
+    apagado: 'Tócame para despertarme',
+    vigilando: 'Di «Jarvis» y te escucho',
+    escuchando: 'Te escucho, jefe',
+    pensando: 'Un segundo...',
+    hablando: 'Hablando... tócame para interrumpirme',
+    error: 'No pude abrir el micrófono'
+  };
+
+  var estado = 'apagado';
+  var rec = null;
+  var micOK = false;
+  var sinResultado = 0;
+  var hablandoTexto = '';
+  var temporizadores = [];
+  var cfg = { vozURI: '', velocidad: 1, bargein: false };
+  try {
+    var guardada = JSON.parse(localStorage.getItem('jarvis.cfg.v1') || 'null');
+    if (guardada) cfg = Object.assign(cfg, guardada);
+  } catch (e) {}
+
+  // Onda de barras
+  var barras = [10, 22, 34, 18, 40, 26, 12, 30, 38, 16, 24, 34, 12, 20, 8];
+  for (var i = 0; i < barras.length; i++) {
+    var s = document.createElement('span');
+    s.style.height = barras[i] + 'px';
+    s.style.animationDelay = (i * 90) + 'ms';
+    waveEl.appendChild(s);
+  }
+
+  var SUGERENCIAS = ['Qué hora es', 'Dame el briefing', 'Cómo van los mercados', 'Avísame en 5 minutos', 'Cuánto es 35 por 12', 'Qué puedes hacer'];
+  var chipsEl = document.getElementById('chips');
+  SUGERENCIAS.forEach(function (txt) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'chip'; b.textContent = txt;
+    b.addEventListener('click', function () { recibirOrden(txt); });
+    chipsEl.appendChild(b);
+  });
+
+  function ponerEstado(e) {
+    estado = e;
+    body.className = e;
+    estadoEl.textContent = TEXTOS[e] || e;
+    estadoEl.className = (e === 'escuchando' || e === 'vigilando') ? 'activo' : '';
+  }
+
+  function aviso(t) {
+    if (t) { avisoEl.textContent = t; avisoEl.style.display = 'block'; }
+    else { avisoEl.style.display = 'none'; }
+  }
+
+  function linea(quien, texto) {
+    var vacio = logEl.querySelector('.vacio');
+    if (vacio) vacio.remove();
+    var d = document.createElement('div');
+    d.className = 'burbuja ' + quien;
+    d.textContent = texto;
+    logEl.appendChild(d);
+    while (logEl.children.length > 24) logEl.removeChild(logEl.firstChild);
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function guardarCfg() { try { localStorage.setItem('jarvis.cfg.v1', JSON.stringify(cfg)); } catch (e) {} }
+
+  // Voces
+  function cargarVoces() {
+    if (!('speechSynthesis' in window)) return;
+    var sel = document.getElementById('voz-sel');
+    var actuales = sel.querySelectorAll('option[data-v]');
+    for (var i = 0; i < actuales.length; i++) actuales[i].remove();
+    window.speechSynthesis.getVoices().forEach(function (v) {
+      if (!v.lang || v.lang.toLowerCase().indexOf('es') !== 0) return;
+      var o = document.createElement('option');
+      o.value = v.voiceURI; o.textContent = v.name + ' (' + v.lang + ')';
+      o.setAttribute('data-v', '1');
+      if (v.voiceURI === cfg.vozURI) o.selected = true;
+      sel.appendChild(o);
+    });
+  }
+  if ('speechSynthesis' in window) {
+    cargarVoces();
+    window.speechSynthesis.onvoiceschanged = cargarVoces;
+  }
+  document.getElementById('voz-sel').addEventListener('change', function (e) { cfg.vozURI = e.target.value; guardarCfg(); });
+  var velEl = document.getElementById('vel');
+  velEl.value = cfg.velocidad;
+  velEl.addEventListener('input', function (e) { cfg.velocidad = Number(e.target.value); guardarCfg(); });
+  var biEl = document.getElementById('bargein');
+  biEl.checked = !!cfg.bargein;
+  biEl.addEventListener('change', function (e) { cfg.bargein = e.target.checked; guardarCfg(); });
+
+  function hablar(texto, alTerminar) {
+    if (!('speechSynthesis' in window)) { if (alTerminar) alTerminar(); return; }
+    ponerEstado('hablando');
+    hablandoTexto = texto;
+    var u = new SpeechSynthesisUtterance(texto);
+    u.lang = 'es-CO'; u.rate = cfg.velocidad; u.pitch = 1;
+    var voces = window.speechSynthesis.getVoices();
+    var voz = null;
+    for (var i = 0; i < voces.length; i++) if (voces[i].voiceURI === cfg.vozURI) voz = voces[i];
+    if (!voz) { // mejor voz disponible: Google neuronal en español, preferir es-CO/es-ES
+      var esps = [];
+      for (var j = 0; j < voces.length; j++) if (voces[j].lang && voces[j].lang.toLowerCase().indexOf('es') === 0) esps.push(voces[j]);
+      for (var k = 0; k < esps.length; k++) if (/google/i.test(esps[k].name) && /es[-_](co|es)/i.test(esps[k].lang)) { voz = esps[k]; break; }
+      if (!voz) for (var k2 = 0; k2 < esps.length; k2++) if (/google/i.test(esps[k2].name)) { voz = esps[k2]; break; }
+      if (!voz && esps.length) voz = esps[0];
+    }
+    if (voz) { u.voice = voz; u.lang = voz.lang; }
+    var fin = function () { if (alTerminar) alTerminar(); };
+    u.onend = fin; u.onerror = fin;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(u);
+  }
+
+  function despuesDeHablar() {
+    if (estado !== 'hablando') return;
+    if (micOK && rec) {
+      ponerEstado('escuchando');
+      parcialEl.textContent = '';
+      try { rec.__pare = false; rec.start(); } catch (e) {}
+    } else {
+      ponerEstado('escuchando');
+    }
+  }
+
+  // ---- Cerebro local (modo prueba) ----
+  function horaAhora() {
+    var d = new Date(), h = d.getHours(), m = d.getMinutes();
+    var ampm = h >= 12 ? 'de la tarde' : (h < 6 ? 'de la madrugada' : 'de la mañana');
+    h = h % 12 === 0 ? 12 : h % 12;
+    return m === 0 ? 'Son las ' + h + ' ' + ampm + '.' : 'Son las ' + h + ' con ' + m + ' ' + ampm + '.';
+  }
+  function fechaHoy() {
+    var dias = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+    var meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+    var d = new Date();
+    return 'Hoy es ' + dias[d.getDay()] + ' ' + d.getDate() + ' de ' + meses[d.getMonth()] + ' de ' + d.getFullYear() + '.';
+  }
+  function calcular(t) {
+    var m = t.match(/(-?\d+(?:[.,]\d+)?)\s*(más|mas|menos|por|entre|\+|\-|x|\*|\×|\/|:)\s*(-?\d+(?:[.,]\d+)?)/);
+    if (!m) return null;
+    var a = parseFloat(m[1].replace(',', '.')), b = parseFloat(m[3].replace(',', '.'));
+    var op = m[2], r;
+    if (op === 'más' || op === 'mas' || op === '+') r = a + b;
+    else if (op === 'menos' || op === '-') r = a - b;
+    else if (op === 'por' || op === 'x' || op === '*' || op === '×') r = a * b;
+    else { if (b === 0) return 'Entre cero no se puede, jefe.'; r = a / b; }
+    r = Math.round(r * 100) / 100;
+    var rTxt = String(r).replace('.', ' punto ');
+    return m[1] + ' ' + op + ' ' + m[3] + ' es ' + rTxt + '.';
+  }
+  function responder(entrada) {
+    var t = entrada.toLowerCase();
+    var mt = t.match(/(?:despiértame|despiertame|avísame|avisame|recuérdame|recuerdame|temporizador|alarma|avisa|recuerda)\D{0,12}?(\d+)\s*(minuto|minutos|min|segundo|segundos|hora|horas)/);
+    if (mt) {
+      var n = parseInt(mt[1], 10);
+      var unidad = mt[2].indexOf('seg') === 0 ? 1000 : (mt[2].indexOf('hora') === 0 ? 3600000 : 60000);
+      var id = setTimeout(function () {
+        hablar('Jefe, pasaron los ' + n + ' ' + mt[2] + '. Aquí sigo.', despuesDeHablar);
+      }, n * unidad);
+      temporizadores.push(id);
+      return 'Listo, jefe: te aviso en ' + n + ' ' + mt[2] + ', mientras tengas la app abierta.';
+    }
+    if (/cuánto es|cuanto es|calcula|multiplica|divide|suma|resta/.test(t)) {
+      var c = calcular(t);
+      if (c) return c;
+      return 'Dime la operación con números, jefe: por ejemplo, cuánto es 35 por 12.';
+    }
+    if (/(^|\s)(hola|buenas|qué más|que mas|hey)(\s|$|!|¡|,|\.)/.test(t)) {
+      return 'Qué tal, jefe. Aquí estoy, siempre despierto mientras tengas la app abierta. Pídeme la hora, un temporizador, una cuenta, el briefing o los mercados.';
+    }
+    if (/hora/.test(t)) return horaAhora();
+    if (/fecha|qué día|que dia|día es|dia es/.test(t)) return fechaHoy();
+    if (/briefing|resumen|buenos días|buenos dias/.test(t)) {
+      return 'Buenos días, jefe. Ojo: este briefing es de ejemplo porque mi cerebro completo aún no está conectado. Hoy tienes una reunión a las nueve y una llamada a las tres. Tienes tres correos urgentes de veinticuatro sin leer. Y el V75 subió dos punto uno por ciento y está tocando tu nivel. En la siguiente fase todo esto será real.';
+    }
+    if (/mercado|v75|volatil|bitcoin|btc|trading|índice|indice/.test(t)) {
+      return 'Dato de ejemplo, jefe: el V75 está en tu zona y lleva tres velas a favor. Cuando conectemos el sistema nervioso de verdad, te aviso yo solo cuando rompa un nivel. Nada de esto es una señal real todavía.';
+    }
+    if (/qué puedes|que puedes|ayuda|qué sabes|que sabes/.test(t)) {
+      return 'Puedo decirte la hora y la fecha, ponerte temporizadores hablados, hacer cuentas, leerte un briefing de ejemplo y hablar de los mercados, también de ejemplo. Para todo lo demás, toca el botón verde y se lo pasas a tu Instinct por WhatsApp: ese sí sabe de todo lo tuyo.';
+    }
+    if (/quién eres|quien eres|tu nombre|jarvis/.test(t)) {
+      return 'Soy tu Jarvis, jefe. Esta carcasa ya tiene oídos, voz y modales; mi cerebro completo es tu Instinct, al que me conecto por WhatsApp con el botón verde. Todo gratis, como pediste.';
+    }
+    if (/chiste|broma|ríe|rie/.test(t)) {
+      return 'Va uno, jefe. Le dice un trader a otro: mi estrategia es infalible. ¿Ah sí? ¿Y cuál es? Comprar caro y vender barato, nunca me falla. Bueno, sigamos trabajando.';
+    }
+    if (/gracias|eso es todo|perfecto/.test(t)) return 'Para servirte, jefe. Aquí sigo.';
+    if (/apaga|duérmete|duermete|silencio|calla|basta/.test(t)) return '__SLEEP__';
+    return '__PUENTE__';
+  }
+
+  function recibirOrden(texto) {
+    detenerEscucha();
+    linea('tu', texto);
+    ponerEstado('pensando');
+    var respuesta = responder(texto);
+    setTimeout(function () {
+      if (respuesta === '__SLEEP__') {
+        hablar('Listo, jefe. Me pongo en vigía: di «Jarvis» y vuelvo.', function () {
+          if (micOK && rec) { ponerEstado('vigilando'); try { rec.__pare = false; rec.start(); } catch (e) {} }
+          else ponerEstado('escuchando');
+        });
+        return;
+      }
+      if (respuesta === '__PUENTE__') {
+        var url = 'https://wa.me/?text=' + encodeURIComponent('Desde mi Jarvis: ' + texto);
+        puenteA.href = url;
+        puenteEl.style.display = 'block';
+        try { if (navigator.clipboard) navigator.clipboard.writeText(texto); } catch (e) {}
+        var msg = 'Esa todavía no la tengo conectada en esta carcasa, jefe. Te la dejé lista: toca el botón verde y se la pasas a tu Instinct por WhatsApp, que ese sí te sabe responder de todo lo tuyo.';
+        linea('jarvis', msg);
+        hablar(msg, despuesDeHablar);
+        return;
+      }
+      puenteEl.style.display = 'none';
+      linea('jarvis', respuesta);
+      hablar(respuesta, despuesDeHablar);
+    }, 420);
+  }
+
+  function detenerEscucha() {
+    if (rec) { try { rec.__pare = true; rec.stop(); } catch (e) {} }
+  }
+
+  // ---- Reconocimiento de voz ----
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (SR) {
+    rec = new SR();
+    rec.lang = 'es-CO';
+    rec.continuous = true;
+    rec.interimResults = true;
+    rec.maxAlternatives = 1;
+    rec.__pare = true;
+
+    rec.onresult = function (ev) {
+      var final = '', interino = '';
+      for (var i = ev.resultIndex; i < ev.results.length; i++) {
+        var r = ev.results[i];
+        if (r.isFinal) final += r[0].transcript;
+        else interino += r[0].transcript;
+      }
+      if (estado === 'vigilando') {
+        parcialEl.textContent = interino;
+        if (/\bjarvis\b/i.test(final) || /\bjarvis\b/i.test(interino)) {
+          sinResultado = 0;
+          try { rec.__pare = true; rec.stop(); } catch (e) {}
+          setTimeout(function () { hablar('Te escucho, jefe.', despuesDeHablar); }, 140);
+        }
+      } else if (estado === 'escuchando') {
+        parcialEl.textContent = interino;
+        if (final.trim()) {
+          sinResultado = 0;
+          var orden = final.trim();
+          parcialEl.textContent = '';
+          setTimeout(function () { recibirOrden(orden); }, 90);
+        }
+      } else if (estado === 'hablando' && cfg.bargein && final.trim()) {
+        var dicho = final.trim().toLowerCase();
+        if (dicho.length > 3 && hablandoTexto.toLowerCase().indexOf(dicho) === -1) {
+          window.speechSynthesis.cancel();
+          recibirOrden(final.trim());
+        }
+      }
+    };
+
+    rec.onend = function () {
+      if (rec.__pare) return;
+      if (estado === 'vigilando' || (estado === 'hablando' && cfg.bargein)) {
+        setTimeout(function () { try { rec.start(); } catch (e) {} }, 240);
+      } else if (estado === 'escuchando') {
+        sinResultado++;
+        if (sinResultado >= 3) {
+          sinResultado = 0;
+          ponerEstado('vigilando');
+          parcialEl.textContent = '';
+        }
+        setTimeout(function () { try { rec.start(); } catch (e) {} }, 190);
+      }
+    };
+
+    rec.onerror = function (ev) {
+      if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed') {
+        micOK = false;
+        ponerEstado('error');
+        aviso('El micrófono está bloqueado. Toca el candado o los tres puntos → Configuración del sitio → Micrófono → Permitir, y vuelve a tocarme. Mientras tanto escríbeme abajo y te respondo en voz alta.');
+      } else if (ev.error === 'audio-capture') {
+        aviso('No encuentro un micrófono disponible. Revisa que ninguna otra app lo esté usando.');
+      } else if (ev.error === 'network') {
+        aviso('El reconocimiento de voz de este navegador necesita conexión. Revisa tu internet.');
+      }
+    };
+  } else {
+    aviso('Este navegador no trae reconocimiento de voz. En tu Android ábreme con Chrome. Mientras tanto, escríbeme y te respondo en voz alta.');
+  }
+
+  // ---- Orbe ----
+  document.getElementById('orbe-btn').addEventListener('click', function () {
+    if (estado === 'apagado' || estado === 'error') {
+      aviso('');
+      sinResultado = 0;
+      if (rec) {
+        micOK = true;
+        ponerEstado('vigilando');
+        try { rec.__pare = false; rec.start(); } catch (e) {}
+        hablar('Aquí estoy, jefe. Di «Jarvis» cuando me necesites, o háblame ya.', despuesDeHablar);
+      } else {
+        ponerEstado('escuchando');
+        hablar('Aquí estoy, jefe. Escríbeme y te respondo.', despuesDeHablar);
+      }
+    } else if (estado === 'hablando') {
+      window.speechSynthesis.cancel();
+      if (micOK && rec) { ponerEstado('escuchando'); try { rec.__pare = false; rec.start(); } catch (e) {} }
+      else ponerEstado('escuchando');
+    } else {
+      detenerEscucha();
+      window.speechSynthesis.cancel();
+      parcialEl.textContent = '';
+      ponerEstado('apagado');
+    }
+  });
+
+  // ---- Texto ----
+  function enviarTexto() {
+    var t = textoEl.value.trim();
+    if (!t) return;
+    textoEl.value = '';
+    if (estado === 'apagado' || estado === 'error') ponerEstado('escuchando');
+    recibirOrden(t);
+  }
+  document.getElementById('enviar').addEventListener('click', enviarTexto);
+  textoEl.addEventListener('keydown', function (e) { if (e.key === 'Enter') enviarTexto(); });
+
+  // ---- Volver de otra app: retomar la vigilia ----
+  var estabaActivo = false;
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) {
+      estabaActivo = (estado !== 'apagado' && estado !== 'error');
+      if (rec) { try { rec.__pare = true; rec.stop(); } catch (e) {} }
+      window.speechSynthesis.cancel();
+    } else if (estabaActivo && rec && micOK) {
+      sinResultado = 0;
+      ponerEstado('vigilando');
+      try { rec.__pare = false; rec.start(); } catch (e) {}
+    }
+  });
+})();
+</script>
+</body>
+</html>
